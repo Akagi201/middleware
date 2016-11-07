@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"github.com/Sirupsen/logrus"
+	"github.com/dustin/go-humanize"
 )
 
 // Middleware is a middleware handler that logs the request as it goes in and the response as it goes out.
@@ -31,7 +31,7 @@ type Middleware struct {
 // ResponseWrapper wrapper to capture status.
 type ResponseWrapper struct {
 	http.ResponseWriter
-	written int
+	written uint64
 	status  int
 }
 
@@ -44,7 +44,7 @@ func (w *ResponseWrapper) WriteHeader(code int) {
 // Write capture written bytes.
 func (w *ResponseWrapper) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
-	w.written += n
+	w.written += uint64(n)
 	return n, err
 }
 
@@ -53,12 +53,16 @@ func New() func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		log := logrus.New()
 		log.Level = logrus.InfoLevel
-		log.Formatter = &logrus.TextFormatter{}
+		f := new(logrus.TextFormatter)
+		f.TimestampFormat = "2006-01-02 15:04:05"
+		f.FullTimestamp = true
+		log.Formatter = f
 
 		return &Middleware{
 			Logger:      log,
 			Name:        "web",
 			logStarting: true,
+			h:           h,
 		}
 	}
 }
@@ -70,6 +74,7 @@ func NewLogger(logger *logrus.Logger, name string) func(http.Handler) http.Handl
 			Logger:      logger,
 			Name:        name,
 			logStarting: true,
+			h:           h,
 		}
 	}
 }
@@ -96,6 +101,20 @@ func (m *Middleware) ExcludedURLs() []string {
 
 // ServeHTTP calls the "real" handler and logs using the logger
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if m.Before == nil {
+		m.Before = DefaultBefore
+	}
+
+	if m.After == nil {
+		m.After = DefaultAfter
+	}
+
+	for _, u := range m.excludeURLs {
+		if r.URL.Path == u {
+			return
+		}
+	}
+
 	start := time.Now()
 
 	// Try to get the real IP
@@ -122,7 +141,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	latency := time.Since(start)
 
-	m.After(entry, w, latency, m.Name).Info("completed handling request")
+	m.After(entry, *rw, latency, m.Name).Info("completed handling request")
 }
 
 // BeforeFunc is the func type used to modify or replace the *logrus.Entry prior
@@ -131,7 +150,7 @@ type BeforeFunc func(*logrus.Entry, *http.Request, string) *logrus.Entry
 
 // AfterFunc is the func type used to modify or replace the *logrus.Entry after
 // calling the next func in the middleware chain
-type AfterFunc func(*logrus.Entry, http.ResponseWriter, time.Duration, string) *logrus.Entry
+type AfterFunc func(*logrus.Entry, ResponseWrapper, time.Duration, string) *logrus.Entry
 
 // DefaultBefore is the default func assigned to *Middleware.Before
 func DefaultBefore(entry *logrus.Entry, req *http.Request, remoteAddr string) *logrus.Entry {
@@ -147,7 +166,7 @@ func DefaultAfter(entry *logrus.Entry, rw ResponseWrapper, latency time.Duration
 	return entry.WithFields(logrus.Fields{
 		"status":      rw.status,
 		"text_status": http.StatusText(rw.status),
-		"writen":      humanize.Bytes(uint64(rw.written)),
+		"writen":      humanize.Bytes(rw.written),
 		"took":        latency,
 		fmt.Sprintf("measure#%s.latency", name): latency.Nanoseconds(),
 	})
