@@ -1,5 +1,10 @@
 # middleware
 
+[![Build Status](https://travis-ci.org/Akagi201/middleware.svg)](https://travis-ci.org/Akagi201/middleware)
+[![Coverage Status](https://coveralls.io/repos/github/Akagi201/middleware/badge.svg?branch=master)](https://coveralls.io/github/Akagi201/middleware?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Akagi201/middleware)](https://goreportcard.com/report/github.com/Akagi201/middleware)
+[![GoDoc](https://godoc.org/github.com/Akagi201/middleware?status.svg)](https://godoc.org/github.com/Akagi201/middleware)
+
 A collection of net/http middlewares in Go.
 
 It is designed to be fully compatible with http standard library, easy to customize and reuse.
