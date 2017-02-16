@@ -22,7 +22,7 @@ const defaultAuthorizationHeaderName = "Authorization"
 
 // envVarClientSecretName the environment variable to read the JWT environment
 // variable
-const envVarClientSecretName = "CLIENT_SECRET_VAR_SHHH"
+//const envVarClientSecretName = "CLIENT_SECRET_VAR_SHHH"
 
 // userPropertyName is the property name that will be set in the request context
 const userPropertyName = "custom-user-property"

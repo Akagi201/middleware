@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	StartServer()
+	startServer()
 }
 
-func StartServer() {
+func startServer() {
 	r := mux.NewRouter()
 
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
@@ -24,21 +24,21 @@ func StartServer() {
 		SigningMethod: jwt.SigningMethodHS256,
 	})
 
-	r.HandleFunc("/ping", PingHandler)
+	r.HandleFunc("/ping", pingHandler)
 	r.Handle("/secured/ping", negroni.New(
 		negroni.HandlerFunc(jwtMiddleware.HandlerWithNext),
-		negroni.Wrap(http.HandlerFunc(SecuredPingHandler)),
+		negroni.Wrap(http.HandlerFunc(securedPingHandler)),
 	))
 	http.Handle("/", r)
 	http.ListenAndServe(":3001", nil)
 }
 
-type Response struct {
+type responseText struct {
 	Text string `json:"text"`
 }
 
-func respondJson(text string, w http.ResponseWriter) {
-	response := Response{text}
+func respondJSON(text string, w http.ResponseWriter) {
+	response := responseText{text}
 
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
@@ -50,10 +50,10 @@ func respondJson(text string, w http.ResponseWriter) {
 	w.Write(jsonResponse)
 }
 
-func PingHandler(w http.ResponseWriter, r *http.Request) {
-	respondJson("All good. You don't need to be authenticated to call this", w)
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	respondJSON("All good. You don't need to be authenticated to call this", w)
 }
 
-func SecuredPingHandler(w http.ResponseWriter, r *http.Request) {
-	respondJson("All good. You only get this message if you're authenticated", w)
+func securedPingHandler(w http.ResponseWriter, r *http.Request) {
+	respondJSON("All good. You only get this message if you're authenticated", w)
 }

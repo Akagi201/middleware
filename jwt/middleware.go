@@ -28,30 +28,30 @@ type Options struct {
 	// It can be either a shared secret or a public key.
 	// Default value: nil
 	ValidationKeyGetter jwt.Keyfunc
+	// The function that will be called when there's an error validating the token
+	// Default value:
+	ErrorHandler errorHandler
+	// A function that extracts the token from the request
+	// Default: FromAuthHeader (i.e., from Authorization header as bearer token)
+	Extractor TokenExtractor
+	// When set, the middleware verifies that tokens are signed with the specific signing algorithm
+	// If the signing method is not constant the ValidationKeyGetter callback can be used to implement additional checks
+	// Important to avoid security issues described here: https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
+	// Default: nil
+	SigningMethod jwt.SigningMethod
 	// The name of the property in the request where the user information
 	// from the JWT will be stored.
 	// Default value: "user"
 	UserProperty string
-	// The function that will be called when there's an error validating the token
-	// Default value:
-	ErrorHandler errorHandler
 	// A boolean indicating if the credentials are required or not
 	// Default value: false
 	CredentialsOptional bool
-	// A function that extracts the token from the request
-	// Default: FromAuthHeader (i.e., from Authorization header as bearer token)
-	Extractor TokenExtractor
 	// Debug flag turns on debugging output
 	// Default: false
 	Debug bool
 	// When set, all requests with the OPTIONS method will use authentication
 	// Default: false
 	EnableAuthOnOptions bool
-	// When set, the middleware verifies that tokens are signed with the specific signing algorithm
-	// If the signing method is not constant the ValidationKeyGetter callback can be used to implement additional checks
-	// Important to avoid security issues described here: https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
-	// Default: nil
-	SigningMethod jwt.SigningMethod
 }
 
 // JWTMiddleware contains jwt config options
@@ -97,7 +97,7 @@ func (m *JWTMiddleware) logf(format string, args ...interface{}) {
 	}
 }
 
-// Special implementation for Negroni, but could be used elsewhere.
+// HandlerWithNext Special implementation for Negroni, but could be used elsewhere.
 func (m *JWTMiddleware) HandlerWithNext(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	req, err := m.CheckJWT(w, r)
 
@@ -168,12 +168,17 @@ func FromFirst(extractors ...TokenExtractor) TokenExtractor {
 // key in the HTTP cookie, like "access_token"
 func FromCookie(accessTokenName string) TokenExtractor {
 	return func(r *http.Request) (string, error) {
-		cookie, _ := r.Cookie(accessTokenName)
+		cookie, err := r.Cookie(accessTokenName)
+
+		if err != nil {
+			return "", err
+		}
+
 		if cookie != nil {
 			return cookie.Value, nil
-		} else {
-			return "", nil
 		}
+
+		return "", nil
 	}
 }
 
