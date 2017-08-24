@@ -27,3 +27,4 @@ It is designed to be fully compatible with http standard library, easy to custom
 * go-swagger: <https://github.com/go-swagger/go-swagger>
 * negroni: <https://github.com/urfave/negroni>
 * chi: <https://github.com/pressly/chi>
+* [interpose](https://github.com/carbocation/interpose): a minimalist net/http middleware framework
